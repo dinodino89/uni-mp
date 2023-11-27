@@ -13,7 +13,6 @@ const sureToLogin = async () => {
   uni.showLoading({ title: '正在登录', mask: true })
   const { result } = await postLoginWxMinAPI({ code })
   uni.hideLoading()
-
   loginSuccess(result)
 }
 
@@ -31,7 +30,7 @@ const loginSuccess = (profile: LoginResult) => {
 
 // 模拟手机号码快捷登录（开发练习）
 const onGetphonenumberSimple = async () => {
-  const { result } = await postLoginWxMinSimpleAPI('15895871980')
+  const { result } = await postLoginWxMinSimpleAPI('13165329952')
   loginSuccess(result)
 }
 </script>

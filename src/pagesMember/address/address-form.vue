@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// @ts-nocheck
 import { codeToText } from '@/utils/element-china-area-data.mjs'
 // 表单数据
 const form = ref({

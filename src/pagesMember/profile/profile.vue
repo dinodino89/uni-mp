@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { codeToText } from '@/utils/element-china-area-data.mjs'
-import { getMemberProfileAPI, putMemberProfileAPI } from '@/api/login'
-import { useMemberStore } from '@/stores'
-
 // 获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
-// 完整地区
-const fullLocation = ref<string>('')
-// 获取个人信息，修改个人信息需提供初始值
-const profile = ref({} as ProfileDetail)
+// 创建Store对象
+const memberStore = useMemberStore()
+// 生命周期函数，用于监听页面，小程序页面被加载时自动调用
+onLoad(() => {
+  getMemberProfileData()
+})
 
+// 获取个人信息
+const fullLocation = ref<string>('') // 完整地区
+const profile = ref({} as ProfileDetail)
 const getMemberProfileData = async () => {
   const res = await getMemberProfileAPI()
   profile.value = res.result
-  // codeToText[地区码] 匹配地区名称，但是 element-china-area-data ⾥的code去掉了末尾的0，所以去要使⽤正则表达式替换
+  // codeToText[地区码]匹配地区名称，elment-china-area-data里的code去掉了末尾的0，需要正则表达式替换
   fullLocation.value =
     codeToText[profile.value.provinceCode?.replace(/0+$/, '')] +
     ' ' +
@@ -22,35 +23,27 @@ const getMemberProfileData = async () => {
     codeToText[profile.value.countyCode?.replace(/0+$/, '')]
 }
 
-onLoad(() => {
-  getMemberProfileData()
-})
-
-const memberStore = useMemberStore()
-// 修改头像
+// 更新会员头像
 const onAvatarChange = () => {
-  // 调⽤拍照/选择图⽚
+  // 调用拍照/选择图片
   uni.chooseMedia({
-    // ⽂件个数
-    count: 1,
-    // ⽂件类型
-    mediaType: ['image'],
+    count: 1, // 文件个数
+    mediaType: ['image'], // 文件类型
     success: (res) => {
-      // 本地路径
-      const { tempFilePath } = res.tempFiles[0]
-      // ⽂件上传
+      const { tempFilePath } = res.tempFiles[0] // 本地路径
+      // 文件上传
       uni.uploadFile({
         url: '/user/profile/avatar',
-        name: 'file', // 后端数据字段名
+        name: 'file', // 后端数据库字段名
         filePath: tempFilePath, // 新头像
         success: (res) => {
-          // 判断状态码是否上传成功
+          // 状态码判断是否上传成功
           if (res.statusCode === 200) {
             // 提取头像
             const avatar = JSON.parse(res.data).result
-            // 当前⻚⾯更新头像
+            // 当前页面更新头像
             profile.value!.avatar = avatar
-            // 更新 Store 头像
+            // 更新Store头像
             memberStore.profile!.avatar = avatar
             uni.showToast({ icon: 'success', title: '更新成功' })
           } else {
@@ -62,88 +55,84 @@ const onAvatarChange = () => {
   })
 }
 
+// 修改会员信息
 // 修改性别
 const onGenderChange: UniHelper.RadioGroupOnChange = (ev) => {
   profile.value.gender = parseInt(ev.detail.value) as Gender
 }
-
-// 修改⽣⽇
+// 修改生日
 const onBirthdayChange: UniHelper.DatePickerOnChange = (ev) => {
   profile.value.birthday = ev.detail.value
 }
-
 // 修改城市
-let fullLocationCode: [string, string, string] = ['', '', '']
 const onFullLocationChange: UniHelper.RegionPickerOnChange = (ev) => {
-  // 修改前端界⾯
-  fullLocation.value = ev.detail.value.join(' ')
-  // 提交后端更新
-  fullLocationCode = ev.detail.code!
+  fullLocation.value = ev.detail.value.join(' ') // 修改前端界面
+  let code = ev.detail.code! // 存入profile，提交后端更新
+  profile.value.provinceCode = code[0]
+  profile.value.cityCode = code[1]
+  profile.value.countyCode = code[2]
 }
-
-// 点击保存提交表单
+// 保存提交表单
 const onSubmit = async () => {
-  const { nickname, gender, birthday, profession } = profile.value
-  console.log(fullLocationCode)
-  console.log(birthday)
+  const { nickname, gender, birthday, profession, provinceCode, cityCode, countyCode } = profile.value
   const res = await putMemberProfileAPI({
     nickname,
     gender,
     birthday,
     profession,
-    provinceCode: fullLocationCode[0],
-    cityCode: fullLocationCode[1],
-    countyCode: fullLocationCode[2]
+    provinceCode,
+    cityCode,
+    countyCode
   })
   // 更新Store昵称
-  memberStore.profile!.nickname = res.result.nickname
+  profile!.value.nickname = res.result.nickname
   uni.showToast({ icon: 'success', title: '保存成功' })
   setTimeout(() => {
     uni.navigateBack()
   }, 400)
 }
 </script>
-
 <template>
   <view class="viewport">
     <!-- 导航栏 -->
     <view class="navbar" :style="{ paddingTop: safeAreaInsets?.top + 'px' }">
-      <navigator open-type="navigateBack" class="back icon-left" hover-class="none"></navigator>
+      <navigator open-type="navigateBack" class="back icon-left" hover-cl ass="none"></navigator>
       <view class="title">个⼈信息</view>
     </view>
-
     <!-- 头像 -->
     <view class="avatar">
       <view class="avatar-content">
-        <image @tap="onAvatarChange" class="image" :src="profile?.avatar" mode="aspectFill" />
+        <image class="image" :src="profile?.avatar" mode="aspectFill" @tap="onAvatarChange" />
         <text class="text">点击修改头像</text>
       </view>
     </view>
-
     <!-- 表单 -->
     <view class="form">
       <!-- 表单内容 -->
       <view class="form-content">
+        <!-- 账号 -->
         <view class="form-item">
           <text class="label">账号</text>
           <text class="account">{{ profile.account }}</text>
         </view>
+        <!-- 昵称 -->
         <view class="form-item">
           <text class="label">昵称</text>
           <input class="input" type="text" placeholder="请填写昵称" v-model="profile.nickname" />
         </view>
+        <!-- 性别 -->
         <view class="form-item">
           <text class="label">性别</text>
           <radio-group @change="onGenderChange">
             <label class="radio">
-              <radio value="0" color="#27ba9b" :checked="profile?.gender === 0" /> 男
+              <radio value="0" color="#27ba9b" :checked="profile?.gender === 0" />男
             </label>
             <label class="radio">
-              <radio value="1" color="#27ba9b" :checked="profile?.gender === 1" /> ⼥
+              <radio value="1" color="#27ba9b" :checked="profile?.gender === 1" />⼥
             </label>
           </radio-group>
         </view>
-
+        <!-- 生日 -->
         <view class="form-item">
           <text class="label">⽣⽇</text>
           <picker
@@ -154,36 +143,34 @@ const onSubmit = async () => {
             :value="profile.birthday"
             @change="onBirthdayChange"
           >
-            <view v-if="profile.birthday">{{ profile.birthday }}</view>
+            <view v-if="profile?.birthday">{{ profile.birthday }}</view>
             <view class="placeholder" v-else>请选择⽇期</view>
           </picker>
         </view>
-
+        <!-- 城市 -->
         <view class="form-item">
           <text class="label">城市</text>
           <picker
             class="picker"
             mode="region"
-            :value="fullLocation?.split(' ')"
+            :value="fullLocation?.split('')"
             @change="onFullLocationChange"
           >
-            <view v-if="fullLocation">{{ fullLocation }}</view>
-            <view class="placeholder" v-else>请选择城市</view>
+            <view class="placeholder" v-if="fullLocation.includes('undefined')">请选择城市</view>
+            <view v-else> {{ fullLocation }}</view>
           </picker>
         </view>
-
+        <!-- 职业 -->
         <view class="form-item">
           <text class="label">职业</text>
           <input class="input" type="text" placeholder="请填写职业" v-model="profile.profession" />
         </view>
       </view>
-
       <!-- 提交按钮 -->
       <button class="form-button" @tap="onSubmit">保 存</button>
     </view>
   </view>
 </template>
-
 <style lang="scss">
 page {
   background-color: #f4f4f4;
@@ -225,7 +212,7 @@ page {
   }
 }
 
-//头像
+// 头像
 .avatar {
   text-align: center;
   width: 100%;
@@ -251,7 +238,7 @@ page {
   }
 }
 
-//表单
+// 表单
 .form {
   background-color: #f4f4f4;
 
@@ -305,6 +292,11 @@ page {
 
   &-button {
     height: 80rpx;
+    background-color: rgb(39, 186, 155);
+    color: #fff;
+    line-height: 80rpx;
+    margin: 20rpx 20rpx 0;
+    border-radius: 40rpx;
   }
 }
 </style>

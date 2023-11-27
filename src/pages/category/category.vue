@@ -1,5 +1,5 @@
 <script setup lang="ts">
-//
+import wSwiper from '@/components/swiper/wSwiper.vue'
 // 获取轮播图数据
 const bannerList = ref<BannerItem[]>([])
 const getBannerData = async () => {
@@ -14,14 +14,16 @@ const getCategoryTopData = async () => {
   categoryList.value = res.result
 }
 
-const subCategoryList = computed(() => {
-  return categoryList.value[activeIndex.value]?.children || []
-})
 // 高亮下标
 const activeIndex = ref(0)
 
 // 是否数据加载完毕
 const isFinish = ref(false)
+
+// 提取当前二级分类数据
+const subCategoryList = computed(() => {
+  return categoryList.value[activeIndex.value]?.children || []
+})
 // 页面加载
 onLoad(async () => {
   await Promise.all([getBannerData(), getCategoryTopData()])
@@ -43,12 +45,12 @@ onLoad(async () => {
       <scroll-view class="primary" scroll-y>
         <view
           v-for="(item, index) in categoryList"
-          :key="item.id"
+          :key="item"
           class="item"
           :class="{ active: index === activeIndex }"
           @tap="activeIndex = index"
         >
-          <text class="name">{{ item.name }}</text>
+          <text class="name"> {{ item.name }} </text>
         </view>
       </scroll-view>
       <!-- 右侧：二级分类 -->
@@ -69,7 +71,7 @@ onLoad(async () => {
               hover-class="none"
               :url="`/pages/goods/goods?id=${goods.id}`"
             >
-              <image class="image" :src="goods.picture"></image>
+              <image class="image" :src="goods.picture" />
               <view class="name ellipsis">{{ goods.name }}</view>
               <view class="price">
                 <text class="symbol">¥</text>
@@ -185,7 +187,6 @@ page {
       color: #999;
     }
   }
-
   .more {
     &::after {
       font-family: 'erabbit' !important;
